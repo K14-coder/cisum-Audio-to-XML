@@ -21,8 +21,10 @@ Errors use FastAPI's shape: `{"detail": "human readable message"}` (validation e
 | GET | `/api/auth/me` | – | `200 User` or `401` |
 
 ```ts
-type User = { id: string; email: string; is_admin: boolean; strikes: number; banned: boolean }
+type User = { id: string; email: string; is_admin: boolean; strikes: number; banned: boolean; single_user: boolean }
 ```
+
+When the server runs in personal mode (`CISUM_SINGLE_USER=true`, used by `start.sh`), every request is the one local user. `/api/auth/me` returns it with `single_user: true`, and clients should hide login and logout.
 
 A banned user (too many upheld copyright reports) gets `403` on login and on every authenticated endpoint.
 
@@ -64,7 +66,7 @@ type UploadTicket = {
 ```
 
 - `rights_confirmed` must be `true` and `rights_notice_version` must equal the current notice version, otherwise `422`.
-- Files over the size limit get `413`. Accepted types: any `audio/*` (mp3, wav, m4a/aac, flac, ogg, webm from the mic recorder). The server checks the actual content with ffprobe during processing.
+- Files over the size limit (default 200 MB) get `413`. Accepted types: any `audio/*` or `video/*` (mp3, mp4, wav, m4a/aac, mov, flac, ogg, webm from the mic recorder); for videos only the sound is used. `application/octet-stream` is accepted when the filename has a known audio/video extension. The server checks the actual content with ffprobe during processing, so a video without sound fails with `not_audio`.
 
 ## Songs
 

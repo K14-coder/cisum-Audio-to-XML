@@ -101,6 +101,16 @@ def test_full_mix_with_dsp_fallbacks(song, tmp_path):
     assert result.outputs["easy"]["musicxml"].exists()
 
 
+def test_without_note_transcription_chords_come_from_chroma(song, tmp_path):
+    """The --lite install: no Basic Pitch, so chords must come from chroma, not the bass alone."""
+    options = PipelineOptions(
+        title="Lite", separator="hpss", formats=("json",), analyze=AnalyzeOptions(beats="librosa", melody="pyin", notes="none")
+    )
+    a = json.loads(run(song.mix, tmp_path, options).analysis_path.read_text())
+    assert a["backends"]["chords"] == "templates:chroma"
+    assert _chord_accuracy(a, song) >= 0.8
+
+
 def test_rejects_non_audio(tmp_path):
     bad = tmp_path / "notes.txt"
     bad.write_text("not audio")

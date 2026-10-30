@@ -30,10 +30,20 @@ class UserOut(BaseModel):
     is_admin: bool
     strikes: int
     banned: bool
+    single_user: bool = False  # the server runs in personal mode: hide account controls
 
     @classmethod
     def of(cls, u: User) -> "UserOut":
-        return cls(id=u.id, email=u.email, is_admin=u.is_admin, strikes=u.strikes, banned=u.banned)
+        from .config import get_settings
+
+        return cls(
+            id=u.id,
+            email=u.email,
+            is_admin=u.is_admin,
+            strikes=u.strikes,
+            banned=u.banned,
+            single_user=get_settings().single_user,
+        )
 
 
 class AuthOut(BaseModel):

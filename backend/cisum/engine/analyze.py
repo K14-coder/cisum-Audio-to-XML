@@ -99,12 +99,17 @@ def analyze(stems: Stems, options: AnalyzeOptions | None = None, progress: Progr
     melody, bass, fill, other = to_beats(melody_s), to_beats(bass_s), to_beats(fill_s), to_beats(other_s)
 
     report(0.75, "Working out the chords and key…")
-    if other or bass:
+    bass_notes_pc = chords_mod.profiles_from_notes([(bass, 1.0)], n_beats) if bass else None
+    if other:
         pc = chords_mod.profiles_from_notes([(other, 1.0), (bass, 1.2)], n_beats)
-        bass_pc = chords_mod.profiles_from_notes([(bass, 1.0)], n_beats) if bass else None
+        bass_pc = bass_notes_pc
         backends["chords"] = "templates:notes"
     else:
+        # No accompaniment transcription: harmony from chroma. A bass line alone (one
+        # note at a time) can't tell chords apart, but it still marks the roots.
         pc, bass_pc = _chroma_profiles(stems, grid, n_beats, tuning)
+        if bass_notes_pc is not None:
+            bass_pc = bass_notes_pc
         backends["chords"] = "templates:chroma"
 
     key_pc = pc + chords_mod.profiles_from_notes([(melody, 0.7)], n_beats)

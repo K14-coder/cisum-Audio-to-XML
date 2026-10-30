@@ -26,6 +26,18 @@ How each stage works is in [docs/pipeline.md](docs/pipeline.md). The HTTP API is
 | `web/` | React + TypeScript web app (OpenSheetMusicDisplay for notation, Tone.js for playback) |
 | `docs/` | Pipeline, API and legal notes |
 
+## Run it on your computer
+
+Requirements: macOS or Linux (on Windows, use WSL or Docker), Python 3.11+, Node 20+ and ffmpeg. Cairo is optional, for PDF downloads (`brew install ffmpeg cairo`, or `sudo apt install ffmpeg libcairo2`).
+
+```bash
+./start.sh
+```
+
+The first run installs everything, which takes a few minutes and a few GB because of PyTorch. It then opens http://localhost:8000. Drop in an MP3, MP4 (only the sound is used), WAV, M4A, MOV, FLAC or OGG file, tick the rights box, and the sheet music appears when processing finishes. This personal mode has no accounts, and the server only listens on your own machine. Your songs are kept in `backend/data/`.
+
+`./start.sh --lite` skips the neural models for a much smaller install. You still get chords and the left-hand part, but no melody line, so use the full install for real use. `./start.sh --help` lists the other options.
+
 ## Quick start (development)
 
 Requirements: Python 3.11+, Node 20+, ffmpeg, and Cairo (`libcairo2`, for PDF output).
@@ -103,7 +115,8 @@ All settings are environment variables (or a `.env` file in `backend/`). The ful
 | `CISUM_QUEUE` | `thread` | `rq` (Redis workers via `python -m cisum.worker`), `thread` (in the API process) or `sync` |
 | `CISUM_SEPARATOR` / `CISUM_BEATS` / `CISUM_MELODY` / `CISUM_NOTES` | `auto` | Force a backend, e.g. `hpss`, `librosa`, `pyin`, `none` |
 | `CISUM_DEVICE` | auto | Torch device for the neural backends (`cpu`, `cuda`) |
-| `CISUM_MAX_UPLOAD_MB` / `CISUM_MAX_DURATION_S` | `50` / `600` | Upload limits |
+| `CISUM_MAX_UPLOAD_MB` / `CISUM_MAX_DURATION_S` | `200` / `600` | Upload limits (videos are accepted; only their sound is used) |
+| `CISUM_SINGLE_USER` | `false` | Personal mode: no accounts or login. Only for a server nobody else can reach (`start.sh` binds to 127.0.0.1) |
 | `CISUM_DELETE_AUDIO_AFTER_PROCESSING` | `true` | Delete the uploaded audio once it's analyzed |
 | `CISUM_STRIKE_LIMIT` | `3` | Upheld copyright reports before an account is closed |
 | `CISUM_AUTO_HIDE_ON_COPYRIGHT_REPORT` | `true` | Hide a shared arrangement as soon as a copyright report arrives |

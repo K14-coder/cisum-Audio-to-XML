@@ -45,7 +45,7 @@ export function FileDrop({ file, onFile, disabled = false }: Props) {
       <input
         ref={inputRef}
         type="file"
-        accept="audio/*"
+        accept="audio/*,video/*,.mp3,.mp4,.m4a,.mov,.wav,.flac,.ogg,.webm"
         hidden
         onChange={(e) => onFile(e.target.files?.[0] ?? null)}
       />
@@ -56,8 +56,8 @@ export function FileDrop({ file, onFile, disabled = false }: Props) {
         </div>
       ) : (
         <div className="dropzone-empty">
-          <strong>Drop an audio file here</strong>
-          <span className="muted">or click to choose one · MP3, WAV, M4A, FLAC, OGG</span>
+          <strong>Drop an audio or video file here</strong>
+          <span className="muted">or click to choose one · MP3, MP4, WAV, M4A, MOV, FLAC, OGG · only the sound is used</span>
         </div>
       )}
     </div>

@@ -12,7 +12,11 @@ const EXTENSION_TYPES: Record<string, string> = {
   wav: "audio/wav",
   wave: "audio/wav",
   m4a: "audio/mp4",
-  mp4: "audio/mp4",
+  mp4: "video/mp4",
+  m4v: "video/mp4",
+  mov: "video/quicktime",
+  mkv: "video/x-matroska",
+  avi: "video/x-msvideo",
   aac: "audio/aac",
   flac: "audio/flac",
   ogg: "audio/ogg",
@@ -25,7 +29,7 @@ const EXTENSION_TYPES: Record<string, string> = {
 
 function contentTypeFor(file: Blob, filename: string): string | null {
   const type = file.type.split(";")[0].trim();
-  if (type.startsWith("audio/")) return type;
+  if (type.startsWith("audio/") || type.startsWith("video/")) return type;
   const ext = filename.split(".").pop()?.toLowerCase() ?? "";
   return EXTENSION_TYPES[ext] ?? null;
 }
@@ -63,7 +67,14 @@ export function NewSongPage() {
   const onFile = (f: File | null) => {
     setFile(f);
     setError("");
-    if (f && !title.trim()) setTitle(f.name.replace(/\.[^.]+$/, "").replace(/[_]+/g, " ").trim());
+    if (f && !title.trim())
+      setTitle(
+        f.name
+          .replace(/\.[^.]+$/, "")
+          .replace(/_+/g, " ")
+          .replace(/(\S)-(?=\S)/g, "$1 ") // "my-song" -> "my song", but keep "Artist - Title"
+          .trim(),
+      );
   };
 
   const source: { blob: Blob; name: string } | null =
@@ -79,7 +90,7 @@ export function NewSongPage() {
     if (!source || !notice || !rightsOk) return;
     const contentType = contentTypeFor(source.blob, source.name);
     if (!contentType) {
-      setError("That doesn't look like an audio file. Try MP3, WAV, M4A, FLAC or OGG.");
+      setError("That doesn't look like an audio or video file. Try MP3, MP4, WAV, M4A, MOV, FLAC or OGG.");
       return;
     }
     setError("");

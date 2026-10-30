@@ -4,6 +4,8 @@ export type User = {
   id: string;
   email: string;
   is_admin: boolean;
+  /** The server runs in personal mode (no accounts): hide login and logout. */
+  single_user?: boolean;
   strikes: number;
   banned: boolean;
 };

@@ -276,6 +276,31 @@ def test_admin_only(api):
     assert api.get("/api/admin/reports").status_code == 403
 
 
+def test_video_upload_accepted(api):
+    register(api)
+    v = notice_version(api)
+    for name, ct in (("clip.mp4", "video/mp4"), ("clip.mov", "video/quicktime"), ("clip.mp4", "application/octet-stream")):
+        r = api.post(
+            "/api/uploads",
+            json={"filename": name, "content_type": ct, "size_bytes": 120 * 1024 * 1024, "rights_confirmed": True, "rights_notice_version": v},
+            headers=CSRF,
+        )
+        assert r.status_code == 201, (name, ct, r.text)
+
+
+def test_single_user_mode(api, monkeypatch):
+    from cisum.api import config
+
+    monkeypatch.setenv("CISUM_SINGLE_USER", "true")
+    config.get_settings.cache_clear()
+    me = api.get("/api/auth/me").json()
+    assert me["single_user"] is True and me["is_admin"] is True
+    song = upload_song(api)  # no account, no login
+    assert api.get(f"/api/songs/{song['id']}").json()["status"] == "done"
+    # The local account can't be logged into (its email isn't even a valid login).
+    assert api.post("/api/auth/login", json={"email": me["email"], "password": "anything at all"}).status_code in (401, 422)
+
+
 # ---------------------------------------------------------------- S3 storage
 
 def test_s3_storage(monkeypatch, tmp_path):

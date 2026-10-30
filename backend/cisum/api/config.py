@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     device: str | None = None
 
     # Limits and policy
-    max_upload_mb: int = 50
+    max_upload_mb: int = 200  # room for videos; uploads are deleted once they're analyzed
     max_duration_s: float = 600.0
     delete_audio_after_processing: bool = True
     strike_limit: int = 3
@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     admin_emails: str = ""  # comma-separated; these accounts become admins when they register
 
     # Web
+    single_user: bool = False  # personal mode for running on your own computer: no accounts, no login
     cookie_secure: bool = False  # set true behind HTTPS
     session_days: int = 30
     allowed_origins: str = ""  # comma-separated, only needed when the web app is on another origin

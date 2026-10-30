@@ -25,12 +25,14 @@ function Header() {
               Songs
             </NavLink>
             <NavLink to="/new">New song</NavLink>
-            {user.is_admin && <NavLink to="/admin/reports">Reports</NavLink>}
+            {user.is_admin && !user.single_user && <NavLink to="/admin/reports">Reports</NavLink>}
           </>
         )}
       </nav>
       <div className="header-user">
-        {user ? (
+        {user?.single_user ? (
+          <span className="muted user-email">Running on this computer</span>
+        ) : user ? (
           <>
             <span className="muted user-email" title={user.email}>
               {user.email}

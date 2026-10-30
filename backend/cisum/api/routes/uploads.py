@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
@@ -16,17 +19,19 @@ from ..storage import get_storage
 
 router = APIRouter(prefix="/api/uploads", tags=["uploads"])
 
-AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg", ".oga", ".opus", ".webm", ".mp4", ".aif", ".aiff", ".wma"}
+MEDIA_EXTENSIONS = {
+    ".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg", ".oga", ".opus", ".webm", ".aif", ".aiff", ".wma",
+    ".mp4", ".m4v", ".mov", ".mkv", ".avi",
+}
 
 
 def _accepted_type(content_type: str, filename: str) -> bool:
+    """Audio files, or videos (only their audio track is used). ffprobe checks the
+    actual content later, so a video without sound fails with a clear message."""
     ct = content_type.split(";")[0].strip().lower()
-    if ct.startswith("audio/"):
+    if ct.startswith(("audio/", "video/")) or ct == "application/ogg":
         return True
-    # Browsers label some audio-only containers as video (mic recordings, .m4a on some systems).
-    if ct in ("video/webm", "video/mp4", "video/ogg", "application/ogg"):
-        return True
-    return ct == "application/octet-stream" and Path(filename).suffix.lower() in AUDIO_EXTENSIONS
+    return ct == "application/octet-stream" and Path(filename).suffix.lower() in MEDIA_EXTENSIONS
 
 
 @router.post("", status_code=201, response_model=UploadTicket)
@@ -37,7 +42,7 @@ def create_upload(body: UploadCreate, request: Request, user: User = Depends(cur
     if body.rights_notice_version != RIGHTS_NOTICE_VERSION:
         raise HTTPException(422, "The rights notice has changed. Please read it again and confirm.")
     if not _accepted_type(body.content_type, body.filename):
-        raise HTTPException(422, "Please upload an audio file (MP3, WAV, M4A, FLAC, OGG or WebM).")
+        raise HTTPException(422, "Please upload an audio or video file (MP3, MP4, WAV, M4A, MOV, FLAC, OGG or WebM).")
     if body.size_bytes > settings.max_upload_bytes:
         raise HTTPException(413, f"Files can be up to {settings.max_upload_mb} MB.")
 
@@ -84,15 +89,19 @@ async def put_content(upload_id: str, request: Request, user: User = Depends(cur
         raise HTTPException(409, "This upload has already been received.")
     limit = settings.max_upload_bytes
     received = 0
-    chunks: list[bytes] = []
-    async for chunk in request.stream():
-        received += len(chunk)
-        if received > limit:
-            raise HTTPException(413, f"Files can be up to {settings.max_upload_mb} MB.")
-        chunks.append(chunk)
-    if received == 0:
-        raise HTTPException(422, "The file is empty.")
-    get_storage().put_bytes(upload.storage_key, b"".join(chunks), upload.content_type)
+    fd, tmp_name = tempfile.mkstemp(prefix="cisum-upload-")
+    try:
+        with os.fdopen(fd, "wb") as tmp:
+            async for chunk in request.stream():
+                received += len(chunk)
+                if received > limit:
+                    raise HTTPException(413, f"Files can be up to {settings.max_upload_mb} MB.")
+                tmp.write(chunk)
+        if received == 0:
+            raise HTTPException(422, "The file is empty.")
+        await run_in_threadpool(get_storage().put_file, upload.storage_key, Path(tmp_name), upload.content_type)
+    finally:
+        os.unlink(tmp_name)
     upload.status = "uploaded"
     db.commit()
     return Response(status_code=204)

@@ -118,7 +118,7 @@ export function SongPage() {
               <p className="muted">
                 {song.stage_message || "Waiting for a free worker…"} · {Math.round(song.progress * 100)}%
               </p>
-              <p className="hint">This usually takes under a minute. You can leave this page; it keeps going.</p>
+              <p className="hint">This takes from under a minute to a few minutes, depending on the song and your computer. You can leave this page; it keeps going.</p>
             </>
           )}
         </div>
