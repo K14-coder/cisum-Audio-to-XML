@@ -1,0 +1,8 @@
+# Neural backends for the analysis stages. Install after the base package:
+#   pip install -e ".[ml]"
+#   pip install --no-deps -r requirements-ml.txt
+#
+# Basic Pitch declares a hard TensorFlow dependency that has no wheels for
+# Python 3.12+. We run its bundled ONNX model with onnxruntime instead, so it
+# is installed without its declared dependencies (they're covered by the [ml] extra).
+basic-pitch==0.4.0
