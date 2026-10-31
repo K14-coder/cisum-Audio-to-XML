@@ -37,6 +37,10 @@ ml = [
     "torchcrepe>=0.0.22",
     "onnxruntime>=1.17",
     "resampy>=0.2.2,<0.4.3",
+    # torchcrepe and resampy (which Basic Pitch needs) import pkg_resources, which
+    # setuptools dropped in 81. With a newer one both fail to import and the
+    # pipeline quietly falls back to pYIN and no note transcription.
+    "setuptools<81",
     "pretty-midi>=0.2.9",
     "mir-eval>=0.6",
     "scikit-learn>=1.3",
