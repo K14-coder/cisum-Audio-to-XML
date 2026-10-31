@@ -1,0 +1,76 @@
+# Production-shaped stack: API + worker + Postgres + Redis + MinIO (S3).
+#   CISUM_ADMIN_EMAILS=you@example.com docker compose up --build
+# Then open http://localhost:8000 and register with that email to get the admin view.
+
+x-cisum-env: &cisum-env
+  CISUM_DATABASE_URL: postgresql+psycopg://cisum:cisum@postgres:5432/cisum
+  CISUM_STORAGE: s3
+  CISUM_S3_BUCKET: cisum
+  CISUM_S3_ENDPOINT_URL: http://minio:9000
+  CISUM_S3_PUBLIC_ENDPOINT_URL: http://localhost:9000  # where browsers send uploads
+  AWS_ACCESS_KEY_ID: cisum
+  AWS_SECRET_ACCESS_KEY: cisum-secret-change-me
+  CISUM_QUEUE: rq
+  CISUM_REDIS_URL: redis://redis:6379/0
+  CISUM_ADMIN_EMAILS: ${CISUM_ADMIN_EMAILS:-}
+  CISUM_COOKIE_SECURE: ${CISUM_COOKIE_SECURE:-false}
+
+services:
+  api:
+    build: .
+    environment: *cisum-env
+    ports: ["8000:8000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
+      createbucket: { condition: service_completed_successfully }
+
+  worker:
+    build: .
+    command: ["python", "-m", "cisum.worker"]
+    environment: *cisum-env
+    volumes:
+      - models:/root/.cache  # Demucs and Beat This! weights, downloaded on first use
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
+      createbucket: { condition: service_completed_successfully }
+    # For a GPU worker, build with a CUDA torch index (see Dockerfile) and add:
+    # deploy: { resources: { reservations: { devices: [{ capabilities: [gpu] }] } } }
+
+  postgres:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_USER: cisum
+      POSTGRES_PASSWORD: cisum
+      POSTGRES_DB: cisum
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "cisum"]
+      interval: 2s
+      retries: 30
+
+  redis:
+    image: redis:7.4-alpine
+
+  minio:
+    image: minio/minio:RELEASE.2024-10-13T13-34-11Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: cisum
+      MINIO_ROOT_PASSWORD: cisum-secret-change-me
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [miniodata:/data]
+
+  createbucket:
+    image: minio/mc:RELEASE.2024-10-08T09-37-26Z
+    depends_on: [minio]
+    entrypoint:
+      - /bin/sh
+      - -c
+      - until mc alias set local http://minio:9000 cisum cisum-secret-change-me; do sleep 1; done; mc mb -p local/cisum
+
+volumes:
+  pgdata:
+  miniodata:
+  models:
